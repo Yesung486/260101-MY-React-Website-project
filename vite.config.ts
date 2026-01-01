@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       // 📌 [추가] 배포 주소 설정 (저장소 이름과 똑같이 써야 해!)
-      base: '/251031-test-my-React-Project/', 
+      base: '/260101-MY-React-Website-project/', 
       
       server: {
         port: 3000,
