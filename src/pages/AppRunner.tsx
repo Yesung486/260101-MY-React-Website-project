@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AppViewer from '../components/AppViewer';
-import { APP_DATA } from '../../constants';
+import { APP_DATA } from '../constants';
 import { useSound } from '../../hooks/useSound';
 
 const AppRunner: React.FC = () => {

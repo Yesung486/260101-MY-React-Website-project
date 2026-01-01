@@ -4,7 +4,7 @@ import { useSound } from '../../hooks/useSound';
 import { useSoundState } from '../../contexts/SoundContext';
 import { Theme } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { APP_DATA } from '../../constants';
+import { APP_DATA } from '../constants';
 
 interface NavbarProps {
   theme: Theme;

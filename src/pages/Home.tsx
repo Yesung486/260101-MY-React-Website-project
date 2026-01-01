@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import AppCard from '../components/AppCard';
 import CategoryFilter from '../components/CategoryFilter';
-import { APP_DATA, AVATAR_URL } from '../../constants';
+import { APP_DATA, AVATAR_URL } from '../constants';
 import { AppItem, AppCategory } from '../types';
 
 const Home: React.FC = () => {
