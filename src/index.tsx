@@ -1,8 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+// 📌 import { BrowserRouter }... 줄은 지워버리세요!
 import App from './App';
-import { SoundProvider } from '../contexts/SoundContext';
+// SoundProvider 경로가 맞는지 확인해줘! (보통 ./contexts/...)
+import { SoundProvider } from '../contexts/SoundContext'; 
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -13,9 +14,8 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <SoundProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      {/* 📌 여기서 BrowserRouter를 삭제했습니다. App.tsx의 HashRouter가 작동할 거예요! */}
+      <App />
     </SoundProvider>
   </React.StrictMode>
 );
