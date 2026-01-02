@@ -106,4 +106,4 @@ export const APP_DATA: AppItem[] = [
 ];
 
 // ✅ 아바타 이미지 설정 (public/images/me.jpg 가 있다면 아래처럼!)
-export const AVATAR_URL = `${BASE_URL}/images/me.jpg`;
+export const AVATAR_URL = `${BASE_URL}/images/my-profile.jpg`;
