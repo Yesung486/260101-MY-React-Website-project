@@ -102,6 +102,15 @@ export const APP_DATA: AppItem[] = [
     thumbnailUrl: `${BASE_URL}/images/LPcover.gif`,
     createdAt: '2024.06.01',
     path: '/LP-cover-maker'
+  },
+  {
+    id: 'Glitch-game',
+    title: 'Glitch Game',
+    description: 'Glitch를 AI와 대화하며 찾아라!',
+    category: AppCategory.ART,
+    thumbnailUrl: `${BASE_URL}/images/glitch.gif`,
+    createdAt: '2024.06.01',
+    path: '/glitch-game'
   }
 ];
 

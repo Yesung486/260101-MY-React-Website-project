@@ -1,10 +1,8 @@
-
 import React, { useState, useRef, useCallback } from 'react';
 import { StudioState, FontType, Sticker } from './types';
 import { audioService } from './services/AudioService';
 import ControlPanel from './components/ControlPanel';
 import VinylRenderer from './components/VinylRenderer';
-// Gemini AI client is optional — we will dynamically import if available.
 import html2canvas from 'html2canvas';
 
 const INITIAL_STATE: StudioState = {
@@ -80,13 +78,11 @@ const LPCoverMaker: React.FC = () => {
     try {
       const API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.API_KEY;
       if (!API_KEY) {
-        // No API configured — return a simple SVG pattern as placeholder
         const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='800' height='800'><rect width='100%' height='100%' fill='%23000'/><text x='50%' y='50%' fill='%23fff' font-size='24' font-family='Arial' dominant-baseline='middle' text-anchor='middle'>Disc design unavailable (no API)</text></svg>`;
         updateState({ vinylDesignImage: `data:image/svg+xml;base64,${btoa(svg)}` });
         return;
       }
 
-      // Try dynamic import — if it fails, show placeholder
       const mod = await import('@google/generative-ai').catch((e) => { console.warn('genai import failed', e); return null; });
       if (!mod) {
         const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='800' height='800'><rect width='100%' height='100%' fill='%23000'/><text x='50%' y='50%' fill='%23fff' font-size='24' font-family='Arial' dominant-baseline='middle' text-anchor='middle'>Disc design unavailable (client error)</text></svg>`;
@@ -122,20 +118,17 @@ const LPCoverMaker: React.FC = () => {
     setIsExporting(true);
     audioService.playClick();
     
-    // Brief delay to ensure UI is settled (stop spinning for clean capture)
     const wasSpinning = state.isSpinning;
     if (wasSpinning) updateState({ isSpinning: false });
 
     try {
-      // Create canvas from the renderer area
       const canvas = await html2canvas(captureRef.current, {
         backgroundColor: '#111',
-        scale: 2, // High resolution
-        useCORS: true, // Allow cross-origin images
+        scale: 2,
+        useCORS: true,
         logging: false,
       });
 
-      // Trigger download
       const link = document.createElement('a');
       link.download = `vinyl-studio-${state.albumTitle.toLowerCase().replace(/\s+/g, '-')}.png`;
       link.href = canvas.toDataURL('image/png');
@@ -150,8 +143,11 @@ const LPCoverMaker: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col md:flex-row bg-[#111] overflow-hidden text-neutral-200">
-      <aside className="w-full md:w-20 border-b md:border-b-0 md:border-r border-white/5 flex flex-col items-center py-8 z-50 bg-[#0a0a0a]">
+    /* ✅ 수정 포인트 1: pt-20을 추가하여 상단 네비게이션 바 공간을 확보하고, bg를 중립적인 톤으로 변경 */
+    <div className="relative min-h-screen w-full flex flex-col md:flex-row bg-[#0a0a0a] pt-20 overflow-hidden text-neutral-200">
+      
+      {/* 사이드바 Nav: z-index 조정 및 배경 투명도 조절 */}
+      <aside className="w-full md:w-20 border-b md:border-b-0 md:border-r border-white/5 flex flex-col items-center py-8 z-40 bg-[#0a0a0a]/80 backdrop-blur-md">
         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-black font-bold mb-12 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
           VS
         </div>
@@ -165,7 +161,8 @@ const LPCoverMaker: React.FC = () => {
         </nav>
       </aside>
 
-      <main className="flex-1 relative flex items-center justify-center p-4 md:p-12 overflow-hidden">
+      {/* ✅ 수정 포인트 2: 메인 영역이 헤더와 겹치지 않도록 조정 */}
+      <main className="flex-1 relative flex items-center justify-center p-4 md:p-8 overflow-hidden bg-black/20">
         {isExporting && (
           <div className="absolute inset-0 z-[200] bg-black/60 backdrop-blur-md flex flex-col items-center justify-center gap-4">
             <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
@@ -173,13 +170,14 @@ const LPCoverMaker: React.FC = () => {
           </div>
         )}
 
-        <div className="absolute top-8 left-8 z-10">
+        {/* ✅ 수정 포인트 3: 상단 라벨이 헤더와 겹치지 않게 top 위치 조정 */}
+        <div className="absolute top-6 left-8 z-10 hidden sm:block">
           <h1 className="text-xs uppercase tracking-[0.3em] opacity-50 mb-1">Studio Preview</h1>
           <div className="text-xl font-light italic">"{state.albumTitle}"</div>
         </div>
         
-        {/* We need a slightly larger area to capture the ejected disc properly */}
-        <div ref={captureRef} className={`relative p-20 flex items-center justify-center transition-all duration-500 ${isExporting ? 'scale-100' : 'scale-75 lg:scale-100'}`}>
+        {/* 렌더러 영역: scale 조정으로 화면에 꽉 차게 */}
+        <div ref={captureRef} className={`relative p-8 lg:p-20 flex items-center justify-center transition-all duration-500 ${isExporting ? 'scale-100' : 'scale-[0.85] lg:scale-100'}`}>
            {state.isGenerating && (
              <div className="absolute inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm rounded-full overflow-hidden">
                <div className="text-cyan-400 font-bold animate-pulse text-xl uppercase tracking-widest">Generating Disc...</div>
@@ -193,7 +191,8 @@ const LPCoverMaker: React.FC = () => {
            />
         </div>
 
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 glass px-6 py-3 rounded-full z-50 shadow-2xl border border-white/10">
+        {/* 하단 컨트롤 바: z-index 높여서 다른 요소에 가려지지 않게 함 */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 glass px-6 py-3 rounded-full z-[60] shadow-2xl border border-white/10 bg-black/40 backdrop-blur-md">
             <button 
                 onClick={toggleEject}
                 className={`px-6 py-1.5 rounded-full text-xs font-bold tracking-widest transition-all ${state.isEjected ? 'bg-white text-black scale-105' : 'hover:bg-white/10 opacity-70'}`}
@@ -210,6 +209,7 @@ const LPCoverMaker: React.FC = () => {
         </div>
       </main>
 
+      {/* 우측 설정 패널 */}
       <ControlPanel 
         state={state} 
         updateState={updateState} 

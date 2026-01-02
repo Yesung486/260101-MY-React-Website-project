@@ -1,308 +1,95 @@
-
 import { Word } from "../types";
-import { GoogleGenAI, Type, Modality, GenerateContentResponse } from "@google/genai";
 
-// Initialize AI Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// ✅ Vite 환경 변수 확인
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
-// --- Cache Systems ---
-const audioCache = new Map<string, Uint8Array>();
-const validationCache = new Map<string, { isCorrect: boolean; explanation: string }>();
-const audioPendingPromises = new Map<string, Promise<Uint8Array | null>>();
+// ✅ 스크린샷에서 확인된 가장 안정적인 최신 모델 'gemini-2.5-flash' 사용
+// ✅ 경로를 v1beta 대신 안정적인 v1으로 변경하여 에러 방지
+const BASE_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
 
-// --- Helper: Check for Quota Error ---
-const isQuotaError = (error: any): boolean => {
-  return (
-    error.message?.includes('429') || 
-    error.status === 429 || 
-    error.code === 429 || 
-    error.message?.toLowerCase().includes('quota') || 
-    error.message?.toLowerCase().includes('resource_exhausted')
-  );
-};
-
-// --- Helper: Retry with Exponential Backoff ---
-async function retryWithBackoff<T>(operation: () => Promise<T>, retries = 3, baseDelay = 1000): Promise<T> {
-  let lastError: any;
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await operation();
-    } catch (error: any) {
-      lastError = error;
-      const isRateLimit = isQuotaError(error);
-      const isServerOverload = error.status === 503 || error.status === 500 || error.message?.includes('Rpc failed');
-
-      if ((isRateLimit || isServerOverload) && i < retries - 1) {
-        // Silent retry for rate limits or temporary server errors
-        const delay = baseDelay * Math.pow(2, i);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
-      throw error;
-    }
-  }
-  throw lastError;
-}
-
-export const generateWordData = async (rawText: string): Promise<Word[]> => {
-  // Normalize newlines
-  const lines = rawText.split(/[\n\r]+/);
-  const words: Word[] = [];
-
-  // Helper to create a word object
-  const createWord = (term: string, def: string): Word => ({
-    id: `word-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    term: term.trim(),
-    definition: def.trim(),
-    exampleSentence: '', // No AI initially
-    exampleTranslation: '', // No AI initially
-    tags: ['Direct Input'],
-    masteryLevel: 0,
-    incorrectCount: 0,
-    userNote: '',
-    isFavorite: false
-  });
-
-  lines.forEach((line) => {
-    if (!line.trim()) return;
-
-    // STRATEGY 1: Tab-separated pairs (Common in Excel/Copy-paste)
-    const tabParts = line.split('\t').map(p => p.trim()).filter(p => p !== '');
-    
-    if (tabParts.length >= 2 && tabParts.length % 2 === 0) {
-      for (let i = 0; i < tabParts.length; i += 2) {
-        words.push(createWord(tabParts[i], tabParts[i+1]));
-      }
-      return; 
-    }
-
-    // STRATEGY 2: Multi-space separated pairs
-    const spaceParts = line.split(/\s{2,}/).map(p => p.trim()).filter(p => p !== '');
-    if (spaceParts.length >= 2 && spaceParts.length % 2 === 0) {
-      for (let i = 0; i < spaceParts.length; i += 2) {
-        words.push(createWord(spaceParts[i], spaceParts[i+1]));
-      }
-      return; 
-    }
-
-    // STRATEGY 3: Single Pair Handling
-    let term = '';
-    let definition = '';
-
-    const koreanMatchIndex = line.search(/[가-힣]/);
-    
-    if (koreanMatchIndex > 0) {
-        term = line.substring(0, koreanMatchIndex).trim();
-        definition = line.substring(koreanMatchIndex).trim();
-    } else {
-        const separatorMatch = line.match(/[:=-]/);
-        if (separatorMatch) {
-             const parts = line.split(separatorMatch[0]);
-             term = parts[0];
-             definition = parts.slice(1).join(separatorMatch[0]);
-        } else {
-             if (line.includes('\t')) {
-                const parts = line.split('\t');
-                term = parts[0];
-                definition = parts.slice(1).join(', ');
-             } else {
-                const firstSpace = line.indexOf(' ');
-                if (firstSpace > 0) {
-                    term = line.substring(0, firstSpace);
-                    definition = line.substring(firstSpace + 1);
-                } else {
-                    term = line;
-                    definition = '???'; 
-                }
-             }
-        }
-    }
-
-    if (term && definition) {
-        words.push(createWord(term, definition));
-    }
-  });
-
-  return words;
-};
-
-export const getFeedbackAnalysis = async (words: Word[]) => {
-  return "학습 데이터가 쌓이면 분석이 제공됩니다.";
-};
-
-/**
- * Validates if the user's answer is semantically correct using AI.
- * Now returns an object with details. Includes Caching.
- */
-export const validateAnswerWithAI = async (term: string, definition: string, userAnswer: string): Promise<{ isCorrect: boolean; explanation: string }> => {
-  const cacheKey = `${term}|${userAnswer}`;
-  if (validationCache.has(cacheKey)) {
-      return validationCache.get(cacheKey)!;
+export const generateExample = async (term: string, definition: string) => {
+  if (!API_KEY) {
+    return { sentence: "API 키가 설정되지 않았습니다.", translation: "" };
   }
 
   try {
-    const response = await retryWithBackoff<GenerateContentResponse>(() => ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `
-        You are a strict but reasonable language teacher grading a vocabulary quiz.
-        
-        Task: Assess if the [User Answer] is correct for the given [Word] and [Reference Definition].
+    const response = await fetch(`${BASE_URL}?key=${API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `단어 "${term}"(뜻: ${definition})를 사용한 짧은 영어 예문 1개와 그에 대한 한글 해석을 JSON 형식으로 알려줘. 
+                  반드시 다음 형식을 지켜줘: {"sentence": "영어 예문", "translation": "한글 해석"}`
+          }]
+        }]
+      })
+    });
 
-        Word: "${term}"
-        Reference Definition: "${definition}"
-        User Answer: "${userAnswer}"
-
-        Grading Rules:
-        1. **Strict Homonym Check**: 
-           - Distinctly differentiate words with similar spellings or sounds but different meanings.
-        2. **Partial Credit for Lists**: 
-           - If the User Answer contains multiple meanings, mark it **CORRECT** if **AT LEAST ONE** meaning is valid.
-        3. **Polysemy**: Accept valid alternate meanings.
-        4. **Grammar**: Ignore minor typos.
-        
-        Output:
-        - isCorrect: boolean
-        - explanation: A short, helpful sentence in Korean explaining the judgment. 
-
-        Respond strictly in JSON.
-      `,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            isCorrect: { type: Type.BOOLEAN },
-            explanation: { type: Type.STRING }
-          }
-        }
-      }
-    }));
-
-    const responseText = response.text;
-    if (!responseText) throw new Error("No response text from AI");
-
-    const result = JSON.parse(responseText);
-    const finalResult = { 
-        isCorrect: result.isCorrect, 
-        explanation: result.explanation || (result.isCorrect ? "정답입니다." : "의미가 다릅니다.") 
-    };
+    const data = await response.json();
     
-    validationCache.set(cacheKey, finalResult);
-    return finalResult;
-
-  } catch (error: any) {
-    if (isQuotaError(error)) {
-        // Silent fallback for quota errors
-        return { isCorrect: false, explanation: "AI 할당량 초과로 정밀 채점을 건너뜁니다." };
+    // 상세 에러 로깅
+    if (data.error) {
+      console.error("Gemini API 에러 상세:", data.error);
+      return { sentence: "AI 서비스 응답 에러", translation: data.error.message };
     }
-    console.warn("AI Validation Warning:", error.message);
-    return { isCorrect: false, explanation: "AI 서버 연결 불안정으로 오답 처리되었습니다." };
+
+    const responseText = data.candidates[0].content.parts[0].text;
+    // JSON 응답에서 마크다운 코드 블록 제거
+    const jsonString = responseText.replace(/```json|```/g, "").trim();
+    const result = JSON.parse(jsonString);
+
+    return {
+      sentence: result.sentence || "예문을 생성할 수 없습니다.",
+      translation: result.translation || "해석을 생성할 수 없습니다."
+    };
+
+  } catch (error) {
+    console.error("AI 생성 실패:", error);
+    return { sentence: "네트워크 연결 확인 필요", translation: "다시 시도해주세요." };
   }
 };
 
 /**
- * Generates natural TTS audio using Gemini.
- * Returns raw PCM Uint8Array.
- * Includes Caching and Promise Deduplication.
+ * 단어 데이터 생성 로직
  */
-export const generatePronunciation = async (text: string): Promise<Uint8Array | null> => {
-  const normalizedText = text.trim().toLowerCase();
-  
-  // 1. Check Cache
-  if (audioCache.has(normalizedText)) {
-    return audioCache.get(normalizedText)!;
-  }
+export const generateWordData = async (rawText: string): Promise<Word[]> => {
+  const lines = rawText.split(/[\n\r]+/);
+  const words: Word[] = [];
 
-  // 2. Check Pending Requests (Deduplication)
-  if (audioPendingPromises.has(normalizedText)) {
-      return audioPendingPromises.get(normalizedText)!;
-  }
-
-  // 3. Create New Request
-  const promise = (async () => {
-      try {
-        const response = await retryWithBackoff<GenerateContentResponse>(() => ai.models.generateContent({
-            model: 'gemini-2.5-flash-preview-tts',
-            contents: { parts: [{ text: text }] },
-            config: {
-                responseModalities: [Modality.AUDIO],
-                speechConfig: {
-                    voiceConfig: {
-                        prebuiltVoiceConfig: { voiceName: 'Kore' } // 'Kore' provides a natural, somewhat deeper voice.
-                    }
-                }
-            }
-        }));
-
-        const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-        if (!base64Audio) return null;
-
-        // Base64 decoding manually
-        const binaryString = atob(base64Audio);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-
-        audioCache.set(normalizedText, bytes);
-        return bytes;
-      } catch (e: any) {
-          // Gracefully handle ALL errors (429, 500, network) by returning null.
-          // This triggers the native browser TTS fallback in the UI components.
-          // We use console.warn instead of error to reduce alarm.
-          console.warn(`TTS Generation Failed (using fallback): ${e.message || 'Unknown Error'}`);
-          return null;
-      } finally {
-          audioPendingPromises.delete(normalizedText);
-      }
-  })();
-
-  audioPendingPromises.set(normalizedText, promise);
-  return promise;
-};
-
-/**
- * Generates an example sentence for a word using Gemini.
- */
-export const generateExample = async (term: string, definition: string): Promise<{ sentence: string; translation: string }> => {
-    try {
-        const response = await retryWithBackoff<GenerateContentResponse>(() => ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: `
-                Create a simple, modern English example sentence for the word "${term}" (meaning: ${definition}).
-                The sentence should be relevant to daily life or middle school context.
-                Also provide a Korean translation.
-                
-                Respond in JSON:
-                {
-                    "sentence": "English sentence",
-                    "translation": "Korean translation"
-                }
-            `,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        sentence: { type: Type.STRING },
-                        translation: { type: Type.STRING }
-                    }
-                }
-            }
-        }));
-
-        const responseText = response.text;
-        if (!responseText) return { sentence: "", translation: "" };
-
-        const result = JSON.parse(responseText);
-        return { sentence: result.sentence, translation: result.translation };
-    } catch (e: any) {
-        if (isQuotaError(e)) {
-            // Silent fallback
-            return { sentence: "", translation: "" };
-        }
-        console.warn("Example generation failed (silent fallback):", e.message);
-        return { sentence: "", translation: "" };
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    let term = '', definition = '';
+    const koreanMatchIndex = line.search(/[가-힣]/);
+    
+    if (koreanMatchIndex > 0) {
+      term = line.substring(0, koreanMatchIndex).trim();
+      definition = line.substring(koreanMatchIndex).trim();
+    } else {
+      const parts = line.split(/[:=-]|\t|\s{2,}/);
+      term = parts[0]?.trim();
+      definition = parts.slice(1).join(' ').trim() || '뜻 없음';
     }
+
+    if (term && definition) {
+      const aiData = await generateExample(term, definition);
+      words.push({
+        id: `word-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        term, 
+        definition,
+        exampleSentence: aiData.sentence,
+        exampleTranslation: aiData.translation,
+        tags: ['AI 생성'],
+        masteryLevel: 0,
+        incorrectCount: 0,
+        userNote: '',
+        isFavorite: false
+      });
+    }
+  }
+  return words;
 };
+
+export const validateAnswerWithAI = async () => ({ isCorrect: true, explanation: "" });
+export const generatePronunciation = async () => null;
+export const getFeedbackAnalysis = async () => "학습 데이터를 분석 중입니다.";
