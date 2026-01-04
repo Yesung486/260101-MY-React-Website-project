@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Maximize2, Minimize2 } from 'lucide-react';
+import { useSound } from '../../hooks/useSound'; // ✅ 소리 훅 추가
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -12,70 +13,95 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ theme, toggleTheme }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { playClick } = useSound(); // ✅ 소리 함수 가져오기
   const isHomePage = location.pathname === '/';
-  const [isFull, setIsFull] = useState(false);
+  
+  const appContainerRef = useRef<HTMLDivElement>(null);
+  const [isInternalFull, setIsInternalFull] = useState(false);
 
-  const toggleFullScreen = () => {
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsInternalFull(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleAppFullscreen = () => {
+    // ✅ 현재 테마를 넘겨서 낮/밤 소리를 다르게 재생!
+    playClick(theme); 
+    
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-      setIsFull(true);
+      if (appContainerRef.current?.requestFullscreen) {
+        appContainerRef.current.requestFullscreen();
+      }
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen();
-        setIsFull(false);
       }
     }
   };
 
+  const handleBackToList = () => {
+    // ✅ 목록으로 돌아갈 때도 테마에 맞는 소리 재생
+    playClick(theme);
+    navigate('/');
+  };
+
   return (
-    // 전체 컨테이너: flex-col로 쌓고 최소 높이를 100vh로 설정
-    <div className="min-h-screen w-full flex flex-col bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
-      
-      {/* 1. 상단 헤더: 고정 높이 */}
+    <div className={`min-h-screen w-full flex flex-col ${isHomePage ? 'bg-[#020205]' : 'bg-gray-100 dark:bg-[#0f0f15]'} transition-colors duration-300`}>
       <div className="flex-none z-50">
         <Navbar theme={theme} toggleTheme={toggleTheme} />
       </div>
 
-      {/* 2. 메인 영역: 헤더 높이만큼 위쪽 여백(pt-16)을 주어 가려짐 방지 */}
-      <main className="flex-1 flex flex-col pt-20 pb-10 px-4 md:px-6">
-        
+      <main className={`flex-1 flex flex-col ${isHomePage ? 'pt-0' : 'pt-24 pb-10 px-4 md:px-6'}`}>
         {isHomePage ? (
-          /* [홈페이지 모드] */
-          <div className="w-full max-w-7xl mx-auto">
+          <div className="w-full">
             <Outlet />
-            <Footer />
           </div>
         ) : (
-          /* [앱 상세 페이지 모드] */
-          <div className="w-full max-w-6xl mx-auto flex flex-col gap-4 animate-fade-in">
+          <div className="w-full max-w-6xl mx-auto flex flex-col gap-6 animate-fade-in">
             
-            {/* 💡 버튼 영역: 헤더 바로 아래에 위치 */}
-            <div className="flex justify-between items-center bg-white/50 dark:bg-black/20 p-2 rounded-xl backdrop-blur-sm">
-              {/* 왼쪽: 뒤로가기 */}
+            {/* 상단 버튼 바 */}
+            <div className="flex justify-between items-center px-2">
               <button 
-                onClick={() => navigate(-1)} 
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gray-800 text-white hover:bg-black transition-all shadow-lg active:scale-95"
+                onClick={handleBackToList} 
+                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#6366f1] to-[#a855f7] text-white font-bold shadow-lg hover:scale-105 active:scale-95 transition-all"
               >
                 <ArrowLeft size={20} />
-                <span className="font-medium">목록으로</span>
+                <span>목록으로</span>
               </button>
 
-              {/* 오른쪽: 전체화면 */}
               <button 
-                onClick={toggleFullScreen}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-lg active:scale-95"
+                onClick={toggleAppFullscreen}
+                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-[#3b82f6] to-[#2dd4bf] text-white font-bold shadow-lg hover:scale-105 active:scale-95 transition-all"
               >
-                {isFull ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
-                <span className="font-medium">{isFull ? '화면 축소' : '전체 화면'}</span>
+                <Maximize2 size={20} />
+                <span>전체 화면</span>
               </button>
             </div>
 
-            {/* 💡 앱 본체: 그림자와 테두리로 강조 */}
-            <div className="relative w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden min-h-[600px]">
+            {/* 📺 앱이 담기는 컨테이너 */}
+            <div 
+              ref={appContainerRef}
+              className={`relative w-full bg-white dark:bg-[#161620] shadow-2xl overflow-hidden transition-all duration-500
+                ${isInternalFull ? 'rounded-0' : 'rounded-[2.5rem] border border-gray-200 dark:border-white/5 min-h-[700px]'}
+              `}
+            >
+                {/* 🔳 화면 축소 버튼 */}
+                {isInternalFull && (
+                  <button 
+                    onClick={toggleAppFullscreen}
+                    className="fixed top-6 right-6 z-[9999] flex items-center gap-2 px-5 py-3 rounded-xl bg-black/50 backdrop-blur-md text-white border border-white/20 hover:bg-black/70 transition-all animate-in fade-in zoom-in"
+                  >
+                    <Minimize2 size={20} />
+                    <span className="font-bold">화면 축소</span>
+                  </button>
+                )}
+
                 <Outlet />
             </div>
 
-            {/* 💡 앱 페이지에서도 하단에 푸터 표시 */}
             <div className="mt-10">
               <Footer />
             </div>

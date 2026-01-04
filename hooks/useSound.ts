@@ -18,89 +18,98 @@ export const useSound = () => {
     return audioContextRef.current;
   };
 
-  // Helper to calculate effective gain based on global volume
   const getEffectiveGain = (baseGain: number) => {
     if (isMuted) return 0;
-    // Normalize 0-100 to 0-1
     return baseGain * (volume / 100);
   };
 
-  // General Click Sound
-  const playClick = useCallback(() => {
+  // ✅ 태양과 우주의 소리 분석 기반 클릭 사운드
+  const playClick = useCallback((theme: 'light' | 'dark' = 'light') => {
     const ctx = initAudio();
     if (!ctx) return;
+    const now = ctx.currentTime;
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(getEffectiveGain(0.3), now);
+    masterGain.connect(ctx.destination);
 
-    // Base peak gain was 0.2
-    const peakGain = getEffectiveGain(0.2);
-    if (peakGain <= 0.0001) return;
+    // 🎹 분석 기반 아르페지오 구성
+    // 태양: 고주파의 화려한 공명 (E Major 기반)
+    // 우주: 저주파의 깊은 잔향과 신비로운 음정 (C Minor Add9 기반)
+    const notes = theme === 'light' 
+      ? [659.25, 830.61, 987.77] // ☀️ 태양: 따-다-단! (밝고 에너제틱한 고음)
+      : [130.81, 196.00, 311.13]; // 🌙 우주: 웅...웅...웅... (깊고 묵직한 공간감)
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      
+      // 낮에는 깨끗한 Sine파, 밤에는 살짝 더 부드러운 Triangle파로 공간감 부여
+      osc.type = theme === 'light' ? 'sine' : 'triangle';
+      
+      // 태양은 음이 살짝 위로 튀고, 우주는 음이 깊게 깔리도록 설정
+      const timeGap = theme === 'light' ? 0.04 : 0.12; // 태양은 빠르게, 우주는 느긋하게
+      const startTime = now + i * timeGap;
+      
+      osc.frequency.setValueAtTime(freq, startTime);
+      if (theme === 'dark') {
+        // 우주는 끝음이 아주 미세하게 떨어지며 광활한 느낌 전달
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.95, startTime + 0.5);
+      }
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(600, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.1);
+      g.gain.setValueAtTime(0, startTime);
+      g.gain.linearRampToValueAtTime(theme === 'light' ? 0.3 : 0.2, startTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, startTime + (theme === 'light' ? 0.3 : 0.8));
 
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(peakGain, ctx.currentTime + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+      osc.connect(g);
+      g.connect(masterGain);
+      osc.start(startTime);
+      osc.stop(startTime + (theme === 'light' ? 0.3 : 0.8));
+    });
+  }, [volume, isMuted]);
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.1);
-  }, [volume, isMuted]); // Depend on volume/mute state
-
-  // Theme Switch Sound
+  // ✅ 테마 전환 사운드: 태양의 폭발적 빛 vs 우주의 광활한 진입
   const playThemeSwitch = useCallback((targetMode: 'light' | 'dark') => {
     const ctx = initAudio();
     if (!ctx) return;
-    
-    // Base gain for theme switch was 0.2
-    const masterVol = getEffectiveGain(0.2);
-    if (masterVol <= 0.0001) return;
-
     const now = ctx.currentTime;
     const masterGain = ctx.createGain();
-    masterGain.gain.value = masterVol;
+    masterGain.gain.setValueAtTime(getEffectiveGain(0.35), now);
     masterGain.connect(ctx.destination);
 
     if (targetMode === 'light') {
-      // Day Mode
-      const notes = [523.25, 659.25, 783.99]; 
-      notes.forEach((freq, i) => {
+      // ☀️ 태양으로 전환: 빛이 확산되는 듯한 빠른 상승 아르페지오
+      const sunRise = [329.63, 415.30, 493.88, 659.25, 830.61, 1318.51];
+      sunRise.forEach((freq, i) => {
         const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+        const g = ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.value = freq;
-        const startTime = now + i * 0.08;
-        const duration = 0.3;
-        gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(0.5, startTime + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-        osc.connect(gain);
-        gain.connect(masterGain);
-        osc.start(startTime);
-        osc.stop(startTime + duration);
+        const start = now + i * 0.05;
+        osc.frequency.setValueAtTime(freq, start);
+        g.gain.setValueAtTime(0, start);
+        g.gain.linearRampToValueAtTime(0.2, start + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, start + 0.4);
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start(start);
+        osc.stop(start + 0.4);
       });
     } else {
-      // Night Mode
-      const notes = [392.00, 329.63, 261.63]; 
-      notes.forEach((freq, i) => {
+      // 🌙 우주로 전환: 심해나 성운 속으로 가라앉는 듯한 무겁고 몽환적인 소리
+      const spaceDeep = [392.00, 311.13, 261.63, 196.00, 130.81];
+      spaceDeep.forEach((freq, i) => {
         const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'triangle'; 
-        osc.frequency.value = freq;
-        const startTime = now + i * 0.12; 
-        const duration = 0.4;
-        gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(0.4, startTime + 0.05);
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-        osc.connect(gain);
-        gain.connect(masterGain);
-        osc.start(startTime);
-        osc.stop(startTime + duration);
+        const g = ctx.createGain();
+        osc.type = 'sine';
+        const start = now + i * 0.15;
+        osc.frequency.setValueAtTime(freq, start);
+        // 우주 진입 시에는 소리가 더 부드럽게 감싸안도록
+        g.gain.setValueAtTime(0, start);
+        g.gain.linearRampToValueAtTime(0.2, start + 0.1);
+        g.gain.exponentialRampToValueAtTime(0.001, start + 1.0);
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start(start);
+        osc.stop(start + 1.0);
       });
     }
   }, [volume, isMuted]);

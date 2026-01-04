@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Layout from './pages/Layout';
 import Home from './pages/Home';
@@ -16,24 +16,48 @@ import SubwayRunnerGamePage from './pages/SubwayRunnerGamePage';
 import SurvivorGamePage from './pages/SurvivorGamePage';
 import GlitchPage from './components/glitchgame/GlitchApp';
 import { Theme } from './types';
+import EasterEgg from './components/EasterEgg';
 
-// ✅ 페이지 이동 및 버튼 클릭 시 스크롤이 멋대로 움직이는 걸 방지하는 컴포넌트
-const ScrollToTop = () => {
+const ScrollManager = () => {
   const { pathname } = useLocation();
-  
+  const lastScrollY = useRef(0);
+
   useEffect(() => {
-    // 1. 페이지 경로가 바뀌면 무조건 맨 위로
+    // 페이지 변경 시에만 상단으로
     window.scrollTo(0, 0);
-    
-    // 2. 게임 중 엔터나 버튼 클릭 시 화면이 아래로 튀는 현상 방지 (포커스 이벤트 방어)
-    const handleFocus = (e: FocusEvent) => {
-      if (pathname !== '/') { // 홈 화면이 아닐 때(게임 중일 때)만 작동
-        window.scrollTo(0, 0);
+    lastScrollY.current = 0;
+
+    // 사용자가 직접 스크롤할 때마다 현재 위치를 기억함
+    const handleScroll = () => {
+      if (!document.activeElement || document.activeElement.tagName !== 'INPUT') {
+        lastScrollY.current = window.scrollY;
       }
     };
 
-    window.addEventListener('focusin', handleFocus);
-    return () => window.removeEventListener('focusin', handleFocus);
+    // 엔터나 입력창 포커스로 인해 화면이 튀는 것을 방지
+    const preventJump = (e: any) => {
+      if (pathname !== '/') {
+        // 브라우저가 포커스 때문에 화면을 움직이려고 하면 기억해둔 위치로 즉시 복구
+        requestAnimationFrame(() => {
+          if (window.scrollY !== lastScrollY.current) {
+            window.scrollTo(0, lastScrollY.current);
+          }
+        });
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('focusin', preventJump, true);
+    // 엔터키 입력 시 스크롤 튀는 현상 추가 방어
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') preventJump(e);
+    }, true);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('focusin', preventJump);
+      window.removeEventListener('keydown', preventJump);
+    };
   }, [pathname]);
 
   return null;
@@ -52,10 +76,10 @@ const App: React.FC = () => {
   }, [theme]);
 
   const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
-
+        <EasterEgg theme={theme} />
   return (
     <HashRouter>
-      <ScrollToTop />
+      <ScrollManager />
       <Routes>
         <Route path="/" element={<Layout theme={theme} toggleTheme={toggleTheme} />}>
           <Route index element={<Home />} />
