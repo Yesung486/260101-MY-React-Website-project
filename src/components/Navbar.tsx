@@ -4,7 +4,7 @@ import { useSound } from '../../hooks/useSound';
 import { useSoundState } from '../../contexts/SoundContext';
 import { Theme } from '../types';
 import { useNavigate } from 'react-router-dom';
-import StarGame from '../components/StarGame/stargame';
+import StarGame from './StarGame/Stargame';
 
 interface NavbarProps {
   theme: Theme;
