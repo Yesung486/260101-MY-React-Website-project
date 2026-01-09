@@ -3,7 +3,6 @@ import { Sun, Moon, Volume2, VolumeX, Search } from 'lucide-react';
 import { useSound } from '../../hooks/useSound';
 import { useSoundState } from '../../contexts/SoundContext';
 import { Theme } from '../types';
-import { useNavigate } from 'react-router-dom';
 import StarGame from './StarGame/Stargame';
 
 interface NavbarProps {
