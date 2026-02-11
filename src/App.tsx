@@ -16,6 +16,7 @@ import SubwayRunnerGamePage from './pages/SubwayRunnerGamePage';
 import SurvivorGamePage from './pages/SurvivorGamePage';
 import GlitchPage from './pages/GlitchPage';
 import LifeCutsPage from './pages/LifeCutsPage';
+import OldmanPage from './pages/Oldmanpage';
 // ✅ 지렁이 게임 페이지 임포트 추가
 import WormsGamePage from './pages/WormsGamePage'; 
 import { Theme } from './types';
@@ -101,6 +102,7 @@ const App: React.FC = () => {
           <Route path="app/:appId" element={<AppRunner />} />
           <Route path="glitch-game" element={<GlitchPage />} />
           <Route path="lifecuts" element={<LifeCutsPage />} />
+          <Route path="/ajae-gag" element={<OldmanPage />} />
         </Route>
       </Routes>
     </HashRouter>

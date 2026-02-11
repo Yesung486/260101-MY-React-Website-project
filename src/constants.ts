@@ -129,7 +129,16 @@ export const APP_DATA: AppItem[] = [
     thumbnailUrl: `${BASE_URL}/images/wormsgameimage.png`, // 지렁이 게임 썸네일 이미지
     createdAt: '2024.06.01',
     path: '/worms'
-  }
+  },
+  {
+    id: 'ajae-gag',
+    title: '아재개그 Master',
+    description: '세상에서 가장 썰렁한 아재개그 퀴즈!',
+    category: AppCategory.GAME,
+    thumbnailUrl: `${BASE_URL}/images/oldman.png`,
+    createdAt: '2026.02.11',
+    path: '/ajae-gag'
+}
 ];
 
 // ✅ 아바타 이미지 설정 (public/images/me.jpg 가 있다면 아래처럼!)

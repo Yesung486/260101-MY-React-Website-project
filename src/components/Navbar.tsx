@@ -26,7 +26,8 @@ const LOCAL_APP_DATA = [
   { id: 'lp-cover-maker', title: 'LP 커버 메이커', description: '나만의 감성적인 LP판 커버를 디자인해보세요.', thumbnailUrl: `${BASE_URL}/images/LPcover.gif`, path: '/LP-cover-maker' },
   { id: 'Glitch-game', title: 'Glitch Game', description: 'Glitch를 AI와 대화하며 찾아라!', thumbnailUrl: `${BASE_URL}/images/glitch.gif`, path: '/glitch-game' },
   { id: 'lifecuts', title: '인생네컷 Web', description: '나만의 인생사진을 만들어보세요.', thumbnailUrl: `${BASE_URL}/images/lifecut.webp`, path: '/lifecuts' },
-  { id: 'worms', title: '지렁이 게임', description: '고전 지렁이 게임을 웹에서 즐겨보세요!', thumbnailUrl: `${BASE_URL}/images/wormsgameimage.png`, path: '/worms' }
+  { id: 'worms', title: '지렁이 게임', description: '고전 지렁이 게임을 웹에서 즐겨보세요!', thumbnailUrl: `${BASE_URL}/images/wormsgameimage.png`, path: '/worms' },
+  { id: 'ajae-gag', title: '아재개그 모음', description: '웃긴 아재개그를 모아놓은 웹앱입니다.', thumbnailUrl: `${BASE_URL}/images/oldmanlogo.png`, path: '/ajae-gag' }
 ];
 
 const Navbar: React.FC<NavbarProps> = ({ theme, toggleTheme, searchTerm, onSearchChange }) => {
