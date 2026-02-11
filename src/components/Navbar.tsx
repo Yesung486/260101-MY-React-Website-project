@@ -1,251 +1,143 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Sun, Moon, Volume2, VolumeX, Search } from 'lucide-react';
-import { useSound } from '../../hooks/useSound';
+import { useNavigate } from 'react-router-dom';
 import { useSoundState } from '../../contexts/SoundContext';
 import { Theme } from '../types';
-import StarGame from './StarGame/Stargame';
 
 interface NavbarProps {
   theme: Theme;
   toggleTheme: () => void;
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ theme, toggleTheme }) => {
-  const { playClick, playThemeSwitch } = useSound();
+const BASE_URL = '/260101-MY-React-Website-project';
+const LOCAL_APP_DATA = [
+  { id: 'neon-breaker', title: '네온 브레이커', description: '집중력 향상을 위한 벽돌깨기 게임입니다.', thumbnailUrl: `${BASE_URL}/images/brick.png`, path: '/neonbreaker' },
+  { id: 'virtual-try-on', title: 'AI 가상 피팅', description: 'AI를 사용하여 옷을 가상으로 입어보는 혁신적인 경험입니다.', thumbnailUrl: `${BASE_URL}/images/fiting.jpg`, path: '/virtual-try-on' },
+  { id: 'aivoca', title: 'AIVOCA 단어장', description: 'AI와 함께 나만의 영어 단어장을 만드는 앱입니다.', thumbnailUrl: `${BASE_URL}/images/englishword.webp`, path: '/aivoca' },
+  { id: 'survivor-game', title: '서바이벌 게임', description: '서바이벌 게임으로 긴장감 넘치는 경험을 즐겨보세요.', thumbnailUrl: `${BASE_URL}/images/tangtang.webp`, path: '/survivor-game' },
+  { id: 'draw-bridge-drive', title: '다리 만드는 게임', description: '창의력을 발휘해 다리를 만들고 건너보세요.', thumbnailUrl: `${BASE_URL}/images/rode.jpeg`, path: '/drawbridgegame' },
+  { id: 'subway-runner', title: '지하철 러너 게임', description: '지하철 배경에서 펼쳐지는 러닝 게임입니다.', thumbnailUrl: `${BASE_URL}/images/subway.jpg`, path: '/subway-runner' },
+  { id: 'slice-game', title: '슬라이스 게임', description: '과일을 슬라이스하는 재미있는 게임입니다.', thumbnailUrl: `${BASE_URL}/images/niga.jpeg`, path: '/slice-game' },
+  { id: 'neon-stack', title: '네온 스택 게임', description: '네온 블록을 쌓아 올리는 스택 게임입니다.', thumbnailUrl: `${BASE_URL}/images/stack.gif`, path: '/neon-stack' },
+  { id: 'generative-art', title: '제너레이티브 아트', description: '코드로 그려지는 아름다운 예술 작품입니다.', thumbnailUrl: `${BASE_URL}/images/003.gif`, path: '/generative-art' },
+  { id: 'kinetic-typo-studio', title: '키네틱 타이포 스튜디오', description: '텍스트가 입자로 변해 마우스에 반응합니다.', thumbnailUrl: `${BASE_URL}/images/Tipo.webp`, path: '/kinetic-typo' },
+  { id: 'lp-cover-maker', title: 'LP 커버 메이커', description: '나만의 감성적인 LP판 커버를 디자인해보세요.', thumbnailUrl: `${BASE_URL}/images/LPcover.gif`, path: '/LP-cover-maker' },
+  { id: 'Glitch-game', title: 'Glitch Game', description: 'Glitch를 AI와 대화하며 찾아라!', thumbnailUrl: `${BASE_URL}/images/glitch.gif`, path: '/glitch-game' },
+  { id: 'lifecuts', title: '인생네컷 Web', description: '나만의 인생사진을 만들어보세요.', thumbnailUrl: `${BASE_URL}/images/lifecut.webp`, path: '/lifecuts' },
+  { id: 'worms', title: '지렁이 게임', description: '고전 지렁이 게임을 웹에서 즐겨보세요!', thumbnailUrl: `${BASE_URL}/images/wormsgameimage.png`, path: '/worms' }
+];
+
+const Navbar: React.FC<NavbarProps> = ({ theme, toggleTheme, searchTerm, onSearchChange }) => {
+  const navigate = useNavigate();
   const { isMuted, toggleMute } = useSoundState();
-  
-  const [search, setSearch] = useState('');
-  const searchRef = useRef<HTMLDivElement>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const [clickCount, setClickCount] = useState(0); 
-  const [activeEgg, setActiveEgg] = useState<'none' | 'blackhole' | 'gravity' | 'game'>('none');
-  const [solarPhase, setSolarPhase] = useState<'none' | 'dark' | 'approach' | 'shatter'>('none');
-  const [inputLog, setInputLog] = useState(''); 
-  
-  const mouseRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-  const angleRef = useRef(0);
-  const requestRef = useRef<number>();
+  const filteredApps = LOCAL_APP_DATA.filter(app => 
+    app.title.toLowerCase().includes(searchTerm.toLowerCase())
+  ).slice(0, 5);
 
-  // ✅ 1. 태양 충돌 시퀀스
-  const startSolarSequence = () => {
-    setSolarPhase('dark');
-    setTimeout(() => setSolarPhase('approach'), 800);
-    setTimeout(() => {
-      setSolarPhase('shatter');
-      playThemeSwitch('light');
-      document.body.classList.add('animate-impact-shock');
-    }, 3300);
-    setTimeout(() => {
-      setSolarPhase('none');
-      document.body.classList.remove('animate-impact-shock');
-    }, 5000);
-  };
+  // ✅ 검색어 이스터에그 핸들러
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    onSearchChange(value);
+    setShowDropdown(true);
 
-  // ✅ 2. 산산조각 파편 데이터
-  const shatterPieces = useMemo(() => {
-    if (solarPhase !== 'shatter') return [];
-    return Array.from({ length: 120 }).map((_, i) => ({
-      id: i,
-      style: {
-        '--x': `${(Math.random() - 0.5) * 250}vw`,
-        '--y': `${(Math.random() - 0.5) * 250}vh`,
-        '--r': `${Math.random() * 1000 - 500}deg`,
-        '--d': `${Math.random() * 0.4}s`,
-        left: `${Math.random() * 100}%`,
-        top: `${Math.random() * 100}%`,
-      } as React.CSSProperties
-    }));
-  }, [solarPhase]);
-
-  // ✅ 3. 검색창 엔터 -> 게임 실행
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      const term = search.toLowerCase().trim();
-      if (term === 'play' || term === 'ㅔㅣ묘') {
-        e.preventDefault(); 
-        setActiveEgg('game');
-        setSearch('');
-        playThemeSwitch('dark'); 
-      }
+    const lowerValue = value.toLowerCase();
+    
+    // 1. g or ㅎ 입력시 무중력 신호
+    if (lowerValue === 'g' || lowerValue === 'ㅎ') {
+      window.dispatchEvent(new CustomEvent('trigger-gravity'));
+    } 
+    // 2. rocket 입력시 로켓 발사 신호
+    else if (lowerValue === 'rocket') {
+      window.dispatchEvent(new CustomEvent('trigger-rocket'));
+      onSearchChange(''); // 입력창 비우기
+    }
+    // 3. space 입력시 stargame 이동
+    else if (lowerValue === 'space') {
+      navigate('/stargame');
+      onSearchChange(''); // 입력창 비우기
     }
   };
 
-  // ✅ 4. 키보드 이스터에그 리스너
   useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (document.activeElement?.tagName === 'INPUT') return;
-      const key = e.key.toLowerCase();
-      const newLog = (inputLog + key).slice(-10);
-      setInputLog(newLog);
-
-      if (key === 'g' || e.key === 'ㅎ') setActiveEgg(prev => prev === 'gravity' ? 'none' : 'gravity');
-      if (newLog.includes('sun') || newLog.includes('녀ㅜ')) {
-        setInputLog('');
-        startSolarSequence();
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
       }
     };
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [inputLog]);
-
-  // ✅ 5. 애니메이션 엔진 (블랙홀, 무중력)
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseRef.current = { x: e.clientX, y: e.clientY };
-    };
-
-    const animate = () => {
-      const elements = document.querySelectorAll('.group, h1, h2, p, .app-card, footer, section');
-      if (activeEgg === 'none' || activeEgg === 'game' || solarPhase !== 'none') {
-        elements.forEach((el) => { (el as HTMLElement).style.transform = ''; });
-      } else {
-        angleRef.current += 0.02;
-        elements.forEach((el, index) => {
-          const target = el as HTMLElement;
-          const rect = target.getBoundingClientRect();
-          if (activeEgg === 'blackhole') {
-            const dist = 100 + (index % 10) * 20;
-            const orbitX = Math.cos(angleRef.current + index) * dist;
-            const orbitY = Math.sin(angleRef.current + index) * dist;
-            target.style.transform = `translate(${(mouseRef.current.x - (rect.left + rect.width/2)) * 0.2 + orbitX}px, ${(mouseRef.current.y - (rect.top + rect.height/2)) * 0.2 + orbitY}px) rotate(${angleRef.current * 40}deg)`;
-          } else if (activeEgg === 'gravity') {
-            target.style.transform = `translate(${Math.sin(angleRef.current + index) * 20}px, ${Math.cos(angleRef.current * 0.5 + index) * 30}px) rotate(${Math.sin(angleRef.current) * 5}deg)`;
-          }
-        });
-      }
-      requestRef.current = requestAnimationFrame(animate);
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    requestRef.current = requestAnimationFrame(animate);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
-    };
-  }, [activeEgg, solarPhase]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-[100] transition-all duration-300">
-      
-      {/* ☀️ 태양 충돌 효과 레이어 */}
-      {solarPhase !== 'none' && (
-        <div className={`fixed inset-0 z-[1000] flex items-center justify-center pointer-events-none
-          ${solarPhase === 'dark' ? 'bg-black/90 transition-colors duration-700' : ''}
-          ${solarPhase === 'approach' ? 'bg-black/95 transition-colors duration-700' : ''}
-          ${solarPhase === 'shatter' ? 'bg-transparent' : ''}
-        `}>
-          {solarPhase === 'approach' && (
-            <div className="rounded-full bg-gradient-to-r from-orange-600 to-yellow-400 shadow-[0_0_80px_30px_#ea580c] animate-solar-approach" />
-          )}
+    <div className="w-full pt-8 px-4 flex justify-center pointer-events-none fixed top-0 left-0 right-0 z-[100]">
+      <nav className="w-full max-w-4xl pointer-events-auto rounded-2xl border border-white/20 bg-white/10 dark:bg-black/50 backdrop-blur-xl shadow-2xl transition-all duration-500">
+        <div className="px-6 h-14 flex items-center justify-between gap-4">
           
-          {solarPhase === 'shatter' && (
-            <div className="fixed inset-0 overflow-hidden bg-transparent">
-              {shatterPieces.map(piece => (
-                <div 
-                  key={piece.id}
-                  className="absolute w-5 h-5 bg-white animate-shatter-piece"
-                  style={{ 
-                    ...piece.style, 
-                    boxShadow: '0 0 15px 3px rgba(255, 255, 255, 0.9)',
-                    clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)'
-                  }} 
-                />
-              ))}
+          <div className="flex-none cursor-pointer flex items-center gap-2 group" onClick={() => navigate('/')}>
+            <img src="./images/logo.png" alt="Logo" className={`w-6 h-6 object-contain ${theme === 'dark' ? 'invert' : ''}`} />
+            <div className="flex flex-col">
+               <span className="text-sm font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500 group-hover:from-indigo-400 group-hover:to-purple-400 transition-all">
+                MyFolio
+               </span>
+               <span className="text-[8px] font-bold text-gray-500 hidden sm:block uppercase tracking-widest leading-none">Star-Forge</span>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* 🎮 스타포지(STAR-FORGE) 게임 레이어 */}
-      {activeEgg === 'game' && (
-        <div className="fixed inset-0 bg-black z-[500] flex flex-col items-center justify-center">
-          {/* ✅ 예성이가 만든 게임 컴포넌트 본체 */}
-          <StarGame />
-
-          {/* 닫기 버튼: 게임 UI 위에 띄움 */}
-          <button 
-            onClick={() => { setActiveEgg('none'); playClick(theme); }}
-            className="absolute top-6 right-6 z-[600] px-6 py-2 bg-white/10 hover:bg-red-500 text-white rounded-full font-bold backdrop-blur-md border border-white/20 transition-all shadow-2xl"
-          >
-            EXIT GAME (ESC)
-          </button>
-        </div>
-      )}
-
-      {/* 🛠️ CSS 애니메이션 키프레임 */}
-      <style>{`
-        @keyframes solarApproach {
-          0% { width: 5px; height: 5px; transform: scale(1); opacity: 0.3; }
-          100% { width: 5px; height: 5px; transform: scale(600); opacity: 1; }
-        }
-        @keyframes shatter-piece {
-          0% { transform: translate(0, 0) rotate(0deg) scale(1.5); opacity: 1; }
-          100% { transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(0); opacity: 0; }
-        }
-        @keyframes impact-shock {
-          0% { transform: translate(0,0) scale(1); filter: brightness(1) contrast(1); }
-          10% { transform: translate(-15px, 10px) scale(1.05); filter: brightness(2.5) contrast(1.5) blur(2px); }
-          20% { transform: translate(15px, -10px) scale(1.02); filter: brightness(1.8) contrast(1.2) blur(1px); }
-          100% { transform: translate(0,0) scale(1); filter: brightness(1); }
-        }
-        .animate-solar-approach { animation: solarApproach 2.5s forwards cubic-bezier(0.7, 0, 0.84, 0); }
-        .animate-shatter-piece { 
-          animation: shatter-piece 1.8s forwards cubic-bezier(0.25, 0.46, 0.45, 0.94);
-          animation-delay: var(--d);
-        }
-        .animate-impact-shock { 
-          animation: impact-shock 0.8s cubic-bezier(.36,.07,.19,.97) both; 
-          overflow-x: hidden;
-        }
-      `}</style>
-
-      {/* Navbar UI */}
-      <div className="mx-4 mt-4 rounded-2xl border border-white/30 bg-white/20 dark:bg-black/20 backdrop-blur-md shadow-lg">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          
-          <div className="flex-none">
-            <button 
-              onClick={() => {
-                playClick(theme);
-                if (clickCount + 1 >= 5) { setActiveEgg('blackhole'); setClickCount(0); }
-                else setClickCount(c => c + 1);
-              }}
-              className="flex items-center gap-2 group"
-            >
-              <div className={`p-1 ${activeEgg !== 'none' ? 'animate-spin' : 'group-hover:rotate-12'}`}>
-                <img src="./images/logo.png" alt="Logo" className={`w-9 h-9 object-contain ${theme === 'dark' ? 'invert brightness-200' : ''}`} />
-              </div>
-              <div className="flex flex-col items-start leading-none hidden lg:flex">
-                <span className="text-lg font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">
-                  {activeEgg === 'none' ? 'MyFolio' : activeEgg.toUpperCase()}
-                </span>
-                <span className="text-[10px] font-bold opacity-70 uppercase">STAR-FORGE PROJECT</span>
-              </div>
-            </button>
           </div>
 
-          <div className="flex-1 max-w-md relative" ref={searchRef}>
-            <Search className="absolute left-3 top-2.5 text-gray-500" size={16} />
-            <input 
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              placeholder="play를 입력하고 우주로..."
-              className="w-full bg-white/70 dark:bg-black/40 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm font-bold outline-none focus:ring-2 ring-indigo-500/50 transition-all"
-            />
+          <div className="flex-1 max-w-sm relative" ref={dropdownRef}>
+            <div className="relative group">
+              <Search className="absolute left-3 top-2.5 text-gray-500" size={14} />
+              <input 
+                type="text"
+                value={searchTerm}
+                onFocus={() => setShowDropdown(true)}
+                onChange={handleSearchChange} // ✅ 핸들러 교체
+                placeholder="Search apps..."
+                className="w-full bg-white/10 dark:bg-black/40 border border-white/10 rounded-xl py-1.5 pl-9 pr-4 text-xs font-bold outline-none focus:ring-2 ring-indigo-500/50 transition-all text-white"
+              />
+            </div>
+
+            {showDropdown && searchTerm && (
+              <div className="absolute top-[calc(100%+10px)] left-0 right-0 bg-[#0f0f15]/95 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
+                <div className="p-2 border-b border-white/5 uppercase text-[9px] font-black text-gray-500 tracking-widest px-4 py-2">Suggested Apps</div>
+                {filteredApps.length > 0 ? (
+                  filteredApps.map((app) => (
+                    <div 
+                      key={app.id}
+                      onClick={() => { navigate(app.path); onSearchChange(''); setShowDropdown(false); }}
+                      className="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-white/10 group transition-all"
+                    >
+                      <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10">
+                        <img src={app.thumbnailUrl} alt={app.title} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-[13px] font-bold text-gray-200 group-hover:text-indigo-400">{app.title}</span>
+                        <span className="text-[10px] text-gray-500 line-clamp-1">{app.description}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="px-4 py-6 text-center text-xs text-gray-500 italic">No results found.</div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
-            <button onClick={toggleMute} className="p-2.5 rounded-xl bg-white/30 border border-white/10 hover:bg-white/50 transition-colors">
-              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            <button onClick={toggleMute} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-all">
+              {isMuted ? <VolumeX size={15} className="text-red-400" /> : <Volume2 size={15} className="text-white" />}
             </button>
-            <button onClick={toggleTheme} className="p-2.5 rounded-xl bg-white/30 border border-white/10 hover:bg-white/50 transition-colors">
-              {theme === 'dark' ? <Sun size={18} className="text-yellow-400" /> : <Moon size={18} className="text-indigo-700" />}
+            <button onClick={toggleTheme} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-all">
+              {theme === 'dark' ? <Sun size={15} className="text-yellow-400" /> : <Moon size={15} className="text-indigo-400" />}
             </button>
           </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 };
 

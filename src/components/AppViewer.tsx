@@ -14,6 +14,8 @@ const NeonStackGame = React.lazy(() => import('./neon-stack/NeonStackGame'));
 const SliceGame = React.lazy(() => import('./slice-game/SliceGame'));
 const SubwayRunnerGame = React.lazy(() => import('./subway-runner/SubwayRunnerGame'));
 const SurvivorGameApp = React.lazy(() => import('./survivor-game/SurvivorGameApp'));
+const GlitchGame = React.lazy(() => import('./glitchgame/GlitchApp'));
+const LifeCutsApp = React.lazy(() => import('./lifecuts/LifeCutsApp'));
 
 interface AppViewerProps {
   app: AppItem;
@@ -43,6 +45,8 @@ const AppViewer: React.FC<AppViewerProps> = ({ app }) => {
       case 'slice-game': return <SliceGame />;
       case 'subway-runner': return <SubwayRunnerGame />;
       case 'survivor-game': return <SurvivorGameApp />;
+      case 'glitch-game': return <GlitchGame />;
+      case 'lifecuts': return <LifeCutsApp />;
       default:
         return (
           <div className="w-full h-full flex items-center justify-center">

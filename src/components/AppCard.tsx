@@ -17,17 +17,17 @@ const AppCard: React.FC<AppCardProps> = ({ app }) => {
   const [rotate, setRotate] = useState({ x: 0, y: 0 });
   const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 });
 
-  // 💡 [필살기] 이미지 주소를 완벽하게 계산하는 로직
   const getImageUrl = (path: string | undefined) => {
     if (!path) return "";
     if (path.startsWith('http')) return path;
-    
-    // public 폴더 주소를 절대 경로로 만들어줌
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     return cleanPath;
   };
 
   const imageUrl = getImageUrl(app.image || (app as any).thumbnailUrl);
+
+  // ✅ [중요] 인생네컷인지 확인하는 변수
+  const isLifeCuts = app.id === 'lifecuts';
 
   return (
     <div className="perspective-1000 h-full" onClick={() => { playClick(); navigate(app.path || `/app/${app.id}`); }}>
@@ -47,15 +47,19 @@ const AppCard: React.FC<AppCardProps> = ({ app }) => {
       >
         <div className="absolute inset-0 pointer-events-none z-20 mix-blend-overlay" style={{ background: `radial-gradient(circle at ${glare.x}% ${glare.y}%, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 50%)`, opacity: glare.opacity }} />
 
-        {/* 🖼️ 이미지 영역 */}
-        <div className="relative h-48 overflow-hidden bg-slate-800 flex items-center justify-center">
+        {/* 🖼️ 이미지 영역: 인생네컷일 때만 배경색과 여백을 다르게 설정 */}
+        <div className={`relative h-48 overflow-hidden flex items-center justify-center transition-colors ${
+          isLifeCuts ? 'bg-[#1a1b26] p-4' : 'bg-slate-800'
+        }`}>
           {imageUrl ? (
             <img 
               src={imageUrl} 
               alt={app.title}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              // ✅ 인생네컷일 때만 object-contain 적용해서 안 잘리게!
+              className={`transition-transform duration-500 group-hover:scale-110 ${
+                isLifeCuts ? 'max-w-full max-h-full object-contain' : 'w-full h-full object-cover'
+              }`}
               onError={(e) => {
-                // 💡 여기가 핵심: 실패하면 콘솔창(F12)에 주소를 찍어줌!
                 console.error("실패한 이미지 주소:", imageUrl);
                 (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=Error:+Check+Console";
               }}

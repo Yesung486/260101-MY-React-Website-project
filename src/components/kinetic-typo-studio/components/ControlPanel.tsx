@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ParticleSettings, PresetType } from '../types';
 
@@ -12,7 +11,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ settings, onSettingsChange,
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <div className={`fixed top-6 right-6 z-50 transition-all duration-300 ${isOpen ? 'w-80' : 'w-12 h-12 overflow-hidden'}`}>
+    // ✅ top-6에서 top-24로 수정하여 상단 'Exit Fullscreen' 버튼과 겹치지 않게 정렬
+    <div className={`fixed top-24 right-6 z-50 transition-all duration-300 ${isOpen ? 'w-80' : 'w-12 h-12 overflow-hidden'}`}>
       <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-6 text-white overflow-hidden relative">
         <button 
           onClick={() => setIsOpen(!isOpen)}
@@ -71,7 +71,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ settings, onSettingsChange,
                 <input 
                   type="range" min="50" max="300"
                   value={settings.repulsionRadius}
-                  onChange={(e) => onSettingsChange({ repulsionRadius: parseInt(e.target.value) })}
+                  onChange={(e) => parseInt(e.target.value) && onSettingsChange({ repulsionRadius: parseInt(e.target.value) })}
                   className="w-full accent-white"
                 />
               </div>

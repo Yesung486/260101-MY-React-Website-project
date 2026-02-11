@@ -1,0 +1,7 @@
+{
+  "name": "Life4Cuts Web",
+  "description": "A web-based photo booth application (Life4Cuts style) that captures 4 photos, arranges them in a strip with customizable frames. Features random sentimental captions and Web Audio API sound effects.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

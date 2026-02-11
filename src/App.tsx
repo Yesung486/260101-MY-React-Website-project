@@ -14,7 +14,10 @@ import SliceGamePage from './pages/SliceGamePage';
 import SpaceShooter from './pages/SpaceShooter';
 import SubwayRunnerGamePage from './pages/SubwayRunnerGamePage';
 import SurvivorGamePage from './pages/SurvivorGamePage';
-import GlitchPage from './components/glitchgame/GlitchApp';
+import GlitchPage from './pages/GlitchPage';
+import LifeCutsPage from './pages/LifeCutsPage';
+// ✅ 지렁이 게임 페이지 임포트 추가
+import WormsGamePage from './pages/WormsGamePage'; 
 import { Theme } from './types';
 import EasterEgg from './components/EasterEgg';
 
@@ -23,21 +26,17 @@ const ScrollManager = () => {
   const lastScrollY = useRef(0);
 
   useEffect(() => {
-    // 페이지 변경 시에만 상단으로
     window.scrollTo(0, 0);
     lastScrollY.current = 0;
 
-    // 사용자가 직접 스크롤할 때마다 현재 위치를 기억함
     const handleScroll = () => {
       if (!document.activeElement || document.activeElement.tagName !== 'INPUT') {
         lastScrollY.current = window.scrollY;
       }
     };
 
-    // 엔터나 입력창 포커스로 인해 화면이 튀는 것을 방지
     const preventJump = (e: any) => {
       if (pathname !== '/') {
-        // 브라우저가 포커스 때문에 화면을 움직이려고 하면 기억해둔 위치로 즉시 복구
         requestAnimationFrame(() => {
           if (window.scrollY !== lastScrollY.current) {
             window.scrollTo(0, lastScrollY.current);
@@ -48,7 +47,6 @@ const ScrollManager = () => {
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('focusin', preventJump, true);
-    // 엔터키 입력 시 스크롤 튀는 현상 추가 방어
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') preventJump(e);
     }, true);
@@ -56,7 +54,6 @@ const ScrollManager = () => {
     return () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('focusin', preventJump);
-      window.removeEventListener('keydown', preventJump);
     };
   }, [pathname]);
 
@@ -76,10 +73,13 @@ const App: React.FC = () => {
   }, [theme]);
 
   const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
-        <EasterEgg theme={theme} />
+
   return (
     <HashRouter>
       <ScrollManager />
+      {/* 이스터에그 (Play 입력 시 실행) */}
+      <EasterEgg theme={theme} />
+      
       <Routes>
         <Route path="/" element={<Layout theme={theme} toggleTheme={toggleTheme} />}>
           <Route index element={<Home />} />
@@ -94,8 +94,13 @@ const App: React.FC = () => {
           <Route path="neonbreaker" element={<SpaceShooter />} />
           <Route path="subway-runner" element={<SubwayRunnerGamePage />} />
           <Route path="survivor-game" element={<SurvivorGamePage />} />
+          
+          {/* ✅ 지렁이 게임 정식 라우트 추가 */}
+          <Route path="worms" element={<WormsGamePage />} />
+
           <Route path="app/:appId" element={<AppRunner />} />
           <Route path="glitch-game" element={<GlitchPage />} />
+          <Route path="lifecuts" element={<LifeCutsPage />} />
         </Route>
       </Routes>
     </HashRouter>

@@ -111,6 +111,24 @@ export const APP_DATA: AppItem[] = [
     thumbnailUrl: `${BASE_URL}/images/glitch.gif`,
     createdAt: '2024.06.01',
     path: '/glitch-game'
+  },
+  {
+    id: 'lifecuts', // 새로 추가하는 인생네컷 ID
+    title: '인생네컷 Web',
+    description: 'AI 추천 문구와 함께 찍는 나만의 인생사진을 만들어보세요.',
+    category: AppCategory.ART, // 또는 AppCategory.UTILITY
+    thumbnailUrl: `${BASE_URL}/images/lifecut.webp`, // 이미지가 없다면 나중에 추가!
+    createdAt: '2024.06.01',
+    path: '/lifecuts'
+  },
+  {
+    id: 'worms', // 지렁이 게임 ID
+    title: '지렁이 게임',
+    description: '고전 지렁이 게임을 웹에서 즐겨보세요!',
+    category: AppCategory.GAME,
+    thumbnailUrl: `${BASE_URL}/images/wormsgameimage.png`, // 지렁이 게임 썸네일 이미지
+    createdAt: '2024.06.01',
+    path: '/worms'
   }
 ];
 
